@@ -49,7 +49,7 @@ pipeline {
             steps {
                 sshagent(['ec2-ssh-credentials']) {
                     sh '''
-                    ssh -o StrictHostKeyChecking=no ec2-user@YOUR_EC2_IP <<EOF
+                    ssh -o StrictHostKeyChecking=no ec2-user@13.201.103.187 <<EOF
                         docker stop $CONTAINER_NAME || true
                         docker rm $CONTAINER_NAME || true
                         docker pull $IMAGE_NAME
