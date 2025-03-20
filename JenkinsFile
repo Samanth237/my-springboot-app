@@ -19,15 +19,23 @@ pipeline {
             }
         }
 
+
         stage('Set Permissions') {
             steps {
                 sh 'chmod +x gradlew'
             }
         }
 
+        stage('Stop Gradle Daemons') {
+            steps {
+                sh './gradlew --stop || true'
+            }
+        }
+
+
         stage('Build Jar') {
             steps {
-                sh './gradlew clean build'
+                sh './gradlew clean build --no-daemon --stacktrace'
             }
         }
 
