@@ -11,7 +11,7 @@ pipeline {
             steps {
                 checkout([$class: 'GitSCM',
                     branches: [[name: 'main']],  // ✅ Make sure 'main' is correct
-                    userRemoteConfigs: [[url: 'https://github.com/Samanth237/my-springboot-app.git']]
+                    userRemoteConfigs: [[url: 'https://github.com/Samanth237/my-springboot-app']]
                 ])
             }
         }
