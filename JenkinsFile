@@ -10,12 +10,15 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 checkout([$class: 'GitSCM',
-                    branches: [[name: 'main']],  // ✅ Make sure 'main' is correct
-                    userRemoteConfigs: [[url: 'https://github.com/Samanth237/my-springboot-app']]
+                    branches: [[name: '*/main']],  // ✅ Use '*/main' for better compatibility
+                    extensions: [[$class: 'WipeWorkspace']],  // ✅ Clears old Git data
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/Samanth237/my-springboot-app.git',
+                        credentialsId: 'github-credentials'  // ✅ Add if private repo
+                    ]]
                 ])
             }
         }
-
 
         stage('Build Jar') {
             steps {
