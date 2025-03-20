@@ -4,24 +4,28 @@ pipeline {
     environment {
         IMAGE_NAME = "samanth237/my-springboot-app"
         CONTAINER_NAME = "springboot-app"
-        EC2_USER = "ec2-user"  // Change based on your AMI (Ubuntu: ubuntu, Amazon Linux: ec2-user)
-        EC2_HOST = "13.201.103.187"  // Replace with your EC2 Public IP
-        SSH_KEY = "/Users/samanthgoud/Downloads/sshdemo/demo.pem"  // Private key for SSH access
+        EC2_USER = "ec2-user"  // Update if using Ubuntu ("ubuntu")
+        EC2_HOST = "13.201.103.187"  // Replace with EC2 public IP
+        SSH_KEY = "/Users/samanthgoud/Downloads/sshdemo/demo.pem"
     }
 
     stages {
+
+        stage('Cleanup Workspace') {
+            steps {
+                sh 'rm -rf *'  // Ensure a clean workspace before cloning
+            }
+        }
+
         stage('Clone Repository') {
             steps {
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/master']],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/Samanth237/my-springboot-app.git'
-                    ]]
+                    userRemoteConfigs: [[url: 'https://github.com/Samanth237/my-springboot-app.git']]
                 ])
             }
         }
-
 
         stage('Build Docker Image') {
             steps {
@@ -31,7 +35,6 @@ pipeline {
             }
         }
 
-       
         stage('Push to Docker Hub') {
             steps {
                 script {
@@ -41,19 +44,16 @@ pipeline {
                 }
             }
         }
-        
-
 
         stage('Deploy to EC2') {
             steps {
                 script {
                     sh """
-                        ssh -i $SSH_KEY $EC2_USER@$EC2_HOST << 'EOF'
-                        docker pull $IMAGE_NAME
-                        docker stop $CONTAINER_NAME || true
-                        docker rm $CONTAINER_NAME || true
-                        docker run -d --name $CONTAINER_NAME -p 8080:8080 $IMAGE_NAME
-                        EOF
+                        chmod 400 $SSH_KEY
+                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker pull $IMAGE_NAME"
+                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker stop $CONTAINER_NAME || true"
+                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker rm $CONTAINER_NAME || true"
+                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker run -d --name $CONTAINER_NAME -p 8080:8080 $IMAGE_NAME"
                     """
                 }
             }
