@@ -4,66 +4,47 @@ pipeline {
     environment {
         IMAGE_NAME = "samanth237/my-springboot-app"
         CONTAINER_NAME = "springboot-app"
+        EC2_USER = "ec2-user"  // Change based on your AMI (Ubuntu: ubuntu, Amazon Linux: ec2-user)
+        EC2_HOST = "13.201.103.187"  // Replace with your EC2 Public IP
+        SSH_KEY = "/Users/samanthgoud/Downloads/sshdemo/demo.pem"  // Private key for SSH access
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: '*/main']],  // ✅ Use '*/main' for better compatibility
-                    extensions: [[$class: 'WipeWorkspace']],  // ✅ Clears old Git data
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/Samanth237/my-springboot-app.git'
-                    ]]
-                ])
-            }
-        }
-
-
-        stage('Set Permissions') {
-            steps {
-                sh 'chmod +x gradlew'
-            }
-        }
-
-        stage('Stop Gradle Daemons') {
-            steps {
-                sh './gradlew --stop || true'
-            }
-        }
-
-
-        stage('Build Jar') {
-            steps {
-                sh './gradlew clean build -Dorg.gradle.jvmargs="-Xmx512m" --no-daemon --max-workers=1'
+                git 'https://github.com/your-repo.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $IMAGE_NAME .'
+                script {
+                    sh "docker build -t $IMAGE_NAME ."
+                }
             }
         }
 
-        stage('Push to DockerHub') {
+        stage('Push to Docker Hub') {
             steps {
-                withDockerRegistry([credentialsId: 'dockerhub-credentials', url: '']) {
-                    sh 'docker push $IMAGE_NAME'
+                script {
+                    withDockerRegistry([credentialsId: 'docker-hub-credentials', url: '']) {
+                        sh "docker push $IMAGE_NAME"
+                    }
                 }
             }
         }
 
         stage('Deploy to EC2') {
             steps {
-                sshagent(['ec2-ssh-credentials']) {
-                    sh '''
-                    ssh -o StrictHostKeyChecking=no ec2-user@13.201.103.187 <<EOF
+                script {
+                    sh """
+                        ssh -i $SSH_KEY $EC2_USER@$EC2_HOST << 'EOF'
+                        docker pull $IMAGE_NAME
                         docker stop $CONTAINER_NAME || true
                         docker rm $CONTAINER_NAME || true
-                        docker pull $IMAGE_NAME
-                        docker run -d -p 8081:8080 --name $CONTAINER_NAME $IMAGE_NAME
-                    EOF
-                    '''
+                        docker run -d --name $CONTAINER_NAME -p 8080:8080 $IMAGE_NAME
+                        EOF
+                    """
                 }
             }
         }
