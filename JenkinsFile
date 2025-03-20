@@ -35,7 +35,7 @@ pipeline {
 
         stage('Build Jar') {
             steps {
-                sh './gradlew clean build --no-daemon --max-workers=1'
+                sh './gradlew clean build -Dorg.gradle.jvmargs="-Xmx512m" --no-daemon --max-workers=1'
             }
         }
 
