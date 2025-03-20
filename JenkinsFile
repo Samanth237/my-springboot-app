@@ -35,7 +35,7 @@ pipeline {
 
         stage('Build Jar') {
             steps {
-                sh './gradlew clean build --no-daemon --stacktrace'
+                sh './gradlew clean build --no-daemon --max-workers=1'
             }
         }
 
