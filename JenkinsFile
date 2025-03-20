@@ -12,9 +12,16 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                git 'https://github.com/Samanth237/my-springboot-app.git'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/master']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/Samanth237/my-springboot-app.git'
+                    ]]
+                ])
             }
         }
+
 
         stage('Build Docker Image') {
             steps {
