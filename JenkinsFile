@@ -4,7 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = "samanth237/my-springboot-app"
         CONTAINER_NAME = "springboot-app"
-        EC2_USER = "ec2-user"  // Update if using Ubuntu ("ubuntu")
+        EC2_USER = "ec2-user"  // Use "ubuntu" if using Ubuntu instance
         EC2_HOST = "13.201.103.187"  // Replace with EC2 public IP
         SSH_KEY = "/Users/samanthgoud/Downloads/sshdemo/demo.pem"
     }
@@ -13,7 +13,7 @@ pipeline {
 
         stage('Cleanup Workspace') {
             steps {
-                deleteDir()  // Jenkins-safe way to clean workspace
+                sh 'rm -rf $(ls -A | grep -v ".git")'  // Deletes files but keeps .git
             }
         }
 
@@ -24,19 +24,20 @@ pipeline {
             }
         }
 
-        
-
         stage('Clone Repository') {
             steps {
+                script {
+                    // Ensure we're inside the workspace directory
+                    sh 'cd $WORKSPACE && pwd'
+                }
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/master']],
                     userRemoteConfigs: [[url: 'https://github.com/Samanth237/my-springboot-app.git']]
                 ])
+                sh 'cd $WORKSPACE && git status' // Debugging to confirm git works
             }
         }
-
-
 
         stage('Build Docker Image') {
             steps {
