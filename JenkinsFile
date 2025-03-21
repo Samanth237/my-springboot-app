@@ -10,10 +10,9 @@ pipeline {
     }
 
     stages {
-
         stage('Cleanup Workspace') {
             steps {
-                sh 'rm -rf $(ls -A | grep -v ".git")'  // Deletes files but keeps .git
+                sh 'git clean -fdx'  // Cleans untracked files but keeps .git directory
             }
         }
 
@@ -26,49 +25,7 @@ pipeline {
 
         stage('Clone Repository') {
             steps {
-                script {
-                    // Ensure we're inside the workspace directory
-                    sh 'cd $WORKSPACE && pwd'
-                }
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/master']],
-                    userRemoteConfigs: [[url: 'https://github.com/Samanth237/my-springboot-app.git']]
-                ])
-                sh 'cd $WORKSPACE && git status' // Debugging to confirm git works
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    sh "docker build -t $IMAGE_NAME ."
-                }
-            }
-        }
-
-        stage('Push to Docker Hub') {
-            steps {
-                script {
-                    withDockerRegistry([credentialsId: 'docker-hub-credentials', url: 'https://index.docker.io/v1/']) {
-                        sh "docker push $IMAGE_NAME"
-                    }
-                }
-            }
-        }
-
-        stage('Deploy to EC2') {
-            steps {
-                script {
-                    sh """
-                        chmod 400 $SSH_KEY
-                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker pull $IMAGE_NAME"
-                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker stop $CONTAINER_NAME || true"
-                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker rm $CONTAINER_NAME || true"
-                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker run -d --name $CONTAINER_NAME -p 8080:8080 $IMAGE_NAME"
-                    """
-                }
-            }
-        }
-    }
-}
+                    userRemoteConfigs: [[url: 'https://github.com/Samanth237/my-springboot-app.gi
