@@ -17,14 +17,21 @@ pipeline {
             }
         }
 
-
-        stage('Clone Repository') {
+        stage('Check Git in Jenkins') {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/master']],
-                    userRemoteConfigs: [[url: 'https://github.com/Samanth237/my-springboot-app.git']]
-                ])
+                sh 'which git'
+                sh 'git --version'
+            }
+        }
+
+        
+
+        tage('Clone Repository') {
+            steps {
+                sh '''
+                    rm -rf my-springboot-app  # Ensure a fresh clone
+                    git clone https://github.com/Samanth237/my-springboot-app.git .
+                '''
             }
         }
 
