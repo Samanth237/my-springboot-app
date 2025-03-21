@@ -25,7 +25,55 @@ pipeline {
 
         stage('Clone Repository') {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/master']],
-                    userRemoteConfigs: [[url: 'https://github.com/Samanth237/my-springboot-app.gi
+                script {
+                    echo "Current Jenkins Workspace: $WORKSPACE"
+                    sh 'ls -la $WORKSPACE'  // List contents to debug
+                    
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: '*/master']],
+                        userRemoteConfigs: [[url: 'https://github.com/Samanth237/my-springboot-app.git']],
+                        extensions: [[$class: 'CleanBeforeCheckout']]  // Ensures a clean repo
+                    ])
+        
+                    sh 'cd "$WORKSPACE" && ls -la'  // Verify if .git directory exists
+                    sh 'cd "$WORKSPACE" && git status'  // Should not fail now
+                    sh 'cd "$WORKSPACE" && git remote -v'  // Verify repo origin
+                }
+            }
+        }
+
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh "cd '$WORKSPACE' && docker build -t $IMAGE_NAME ."
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    withDockerRegistry([credentialsId: 'docker-hub-credentials', url: 'https://index.docker.io/v1/']) {
+                        sh "docker push $IMAGE_NAME"
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                script {
+                    sh """
+                        chmod 400 $SSH_KEY
+                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker pull $IMAGE_NAME"
+                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker stop $CONTAINER_NAME || true"
+                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker rm $CONTAINER_NAME || true"
+                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker run -d --name $CONTAINER_NAME -p 8080:8080 $IMAGE_NAME"
+                    """
+                }
+            }
+        }
+    }
+}
