@@ -26,14 +26,17 @@ pipeline {
 
         
 
-        tage('Clone Repository') {
+        stage('Clone Repository') {
             steps {
                 sh '''
-                    rm -rf my-springboot-app  # Ensure a fresh clone
-                    git clone https://github.com/Samanth237/my-springboot-app.git .
+                    rm -rf my-springboot-app  # Ensure fresh clone
+                    git clone https://github.com/Samanth237/my-springboot-app.git my-springboot-app
+                    cd my-springboot-app
+                    git config --global --add safe.directory '*'
                 '''
             }
         }
+
 
         stage('Build Docker Image') {
             steps {
