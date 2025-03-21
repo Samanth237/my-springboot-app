@@ -28,14 +28,14 @@ pipeline {
 
         stage('Clone Repository') {
             steps {
-                sh '''
-                    rm -rf my-springboot-app  # Ensure fresh clone
-                    git clone https://github.com/Samanth237/my-springboot-app.git my-springboot-app
-                    cd my-springboot-app
-                    git config --global --add safe.directory '*'
-                '''
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/master']],
+                    userRemoteConfigs: [[url: 'https://github.com/Samanth237/my-springboot-app.git']]
+                ])
             }
         }
+
 
 
         stage('Build Docker Image') {
