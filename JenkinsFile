@@ -13,9 +13,10 @@ pipeline {
 
         stage('Cleanup Workspace') {
             steps {
-                sh 'rm -rf *'  // Ensure a clean workspace before cloning
+                deleteDir()  // Jenkins-safe way to clean workspace
             }
         }
+
 
         stage('Clone Repository') {
             steps {
