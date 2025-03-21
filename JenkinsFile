@@ -6,7 +6,7 @@ pipeline {
         CONTAINER_NAME = "springboot-app"
         EC2_USER = "ec2-user"  // Change to "ubuntu" if using Ubuntu instance
         EC2_HOST = "13.201.103.187"  // Replace with your EC2 public IP
-        SSH_KEY = "/Users/samanthgoud/Downloads/sshdemo/demo.pem"
+        SSH_KEY = "/root/demo.pem"  // Change to the mounted path inside the container
     }
 
     stages {
@@ -15,8 +15,8 @@ pipeline {
             steps {
                 script {
                     echo "Cleaning workspace..."
-                    sh "rm -rf $WORKSPACE/*"  // Removes all files in the workspace
-                    sh "ls -la $WORKSPACE"  // Check if it's clean
+                    sh "rm -rf $WORKSPACE/*"
+                    sh "ls -la $WORKSPACE"
                 }
             }
         }
@@ -39,11 +39,26 @@ pipeline {
                         $class: 'GitSCM',
                         branches: [[name: '*/master']],
                         userRemoteConfigs: [[url: 'https://github.com/Samanth237/my-springboot-app.git']],
-                        extensions: [[$class: 'CleanBeforeCheckout']]  // Ensures a fresh clone
+                        extensions: [[$class: 'CleanBeforeCheckout']]
                     ])
-                    sh "ls -la $WORKSPACE"  // Check if repo is cloned
-                    sh "cd $WORKSPACE && git status"  // Debugging Git status
-                    sh "cd $WORKSPACE && git remote -v"  // Confirm remote URL
+                    sh "ls -la $WORKSPACE"
+                    sh "cd $WORKSPACE && git status"
+                    sh "cd $WORKSPACE && git remote -v"
+                }
+            }
+        }
+
+        stage('Build JAR') {
+            steps {
+                script {
+                    echo "Granting execute permission to Gradle wrapper..."
+                    sh 'chmod +x ./gradlew'  // ✅ FIX: Make gradlew executable
+        
+                    echo "Building Spring Boot JAR..."
+                    sh './gradlew clean bootJar'
+        
+                    echo "Listing generated JAR file..."
+                    sh 'ls -la build/libs/'  // Debugging: Ensure JAR is created
                 }
             }
         }
@@ -51,8 +66,18 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    echo "Building Docker image..."
-                    sh "cd $WORKSPACE && docker build -t $IMAGE_NAME ."
+                    echo "Building Docker Image..."
+
+                    // Ensure JAR file exists
+                    sh """
+                        if [ ! -f build/libs/app.jar ]; then
+                            echo "❌ JAR file not found in build/libs/"
+                            exit 1
+                        fi
+                    """
+
+                    // Build Docker Image
+                    sh "docker build --platform linux/amd64 -t $IMAGE_NAME -f Dockerfile ."
                 }
             }
         }
@@ -76,7 +101,7 @@ pipeline {
                         chmod 400 $SSH_KEY
                         ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker pull $IMAGE_NAME"
                         ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker stop $CONTAINER_NAME || true"
-                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker rm $CONTAINER_NAME || true"
+                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker rm -f $CONTAINER_NAME || true"
                         ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker run -d --name $CONTAINER_NAME -p 8080:8080 $IMAGE_NAME"
                     """
                 }
