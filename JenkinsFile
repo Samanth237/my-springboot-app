@@ -4,50 +4,55 @@ pipeline {
     environment {
         IMAGE_NAME = "samanth237/my-springboot-app"
         CONTAINER_NAME = "springboot-app"
-        EC2_USER = "ec2-user"  // Use "ubuntu" if using Ubuntu instance
-        EC2_HOST = "13.201.103.187"  // Replace with EC2 public IP
+        EC2_USER = "ec2-user"  // Change to "ubuntu" if using Ubuntu instance
+        EC2_HOST = "13.201.103.187"  // Replace with your EC2 public IP
         SSH_KEY = "/Users/samanthgoud/Downloads/sshdemo/demo.pem"
     }
 
     stages {
+        
         stage('Cleanup Workspace') {
             steps {
-                sh 'git clean -fdx'  // Cleans untracked files but keeps .git directory
+                script {
+                    echo "Cleaning workspace..."
+                    sh "rm -rf $WORKSPACE/*"  // Removes all files in the workspace
+                    sh "ls -la $WORKSPACE"  // Check if it's clean
+                }
             }
         }
 
         stage('Check Git in Jenkins') {
             steps {
-                sh 'which git'
-                sh 'git --version'
+                script {
+                    echo "Checking Git installation..."
+                    sh "which git"
+                    sh "git --version"
+                }
             }
         }
 
         stage('Clone Repository') {
             steps {
                 script {
-                    echo "Current Jenkins Workspace: $WORKSPACE"
-                    sh 'ls -la $WORKSPACE'  // List contents to debug
-                    
+                    echo "Cloning repository..."
                     checkout([
                         $class: 'GitSCM',
                         branches: [[name: '*/master']],
                         userRemoteConfigs: [[url: 'https://github.com/Samanth237/my-springboot-app.git']],
-                        extensions: [[$class: 'CleanBeforeCheckout']]  // Ensures a clean repo
+                        extensions: [[$class: 'CleanBeforeCheckout']]  // Ensures a fresh clone
                     ])
-        
-                    sh 'cd "$WORKSPACE" && ls -la'  // Verify if .git directory exists
-                    sh 'cd "$WORKSPACE" && git status'  // Should not fail now
-                    sh 'cd "$WORKSPACE" && git remote -v'  // Verify repo origin
+                    sh "ls -la $WORKSPACE"  // Check if repo is cloned
+                    sh "cd $WORKSPACE && git status"  // Debugging Git status
+                    sh "cd $WORKSPACE && git remote -v"  // Confirm remote URL
                 }
             }
         }
 
-
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh "cd '$WORKSPACE' && docker build -t $IMAGE_NAME ."
+                    echo "Building Docker image..."
+                    sh "cd $WORKSPACE && docker build -t $IMAGE_NAME ."
                 }
             }
         }
@@ -55,6 +60,7 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 script {
+                    echo "Pushing Docker image to Docker Hub..."
                     withDockerRegistry([credentialsId: 'docker-hub-credentials', url: 'https://index.docker.io/v1/']) {
                         sh "docker push $IMAGE_NAME"
                     }
@@ -65,6 +71,7 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
+                    echo "Deploying to EC2..."
                     sh """
                         chmod 400 $SSH_KEY
                         ssh -o StrictHostKeyChecking=no -i $SSH_KEY $EC2_USER@$EC2_HOST "docker pull $IMAGE_NAME"
