@@ -5,7 +5,7 @@ FROM openjdk:21-jdk
 WORKDIR /app
 
 # Copy the JAR file into the container
-COPY build/libs/app.jar app.jar
+COPY build/libs/demo-0.0.1-SNAPSHOT.jar app.jar
 
 # Expose the application port (change if your app runs on a different port)
 EXPOSE 8080
